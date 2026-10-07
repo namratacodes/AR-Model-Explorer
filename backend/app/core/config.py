@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./ar_model_explorer.db"
     cors_origins: str = "http://localhost:5173"
 
+    # No default on purpose: the app refuses to start without a real secret.
+    secret_key: str
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
     model_config = SettingsConfigDict(env_file=".env")
 
     @property

@@ -3,3 +3,7 @@ uvicorn[standard]
 sqlalchemy
 pydantic-settings
 python-dotenv
+pyjwt
+pwdlib[argon2]
+email-validator
+python-multipart

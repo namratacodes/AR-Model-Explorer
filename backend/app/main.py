@@ -1,12 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import auth, health
 from app.core.config import settings
+from app.database import models  # noqa: F401  (importing registers the tables)
+from app.database.database import Base, engine
+
+# Creates any missing tables. Fine for development; later we can switch to
+# proper migrations when we move to PostgreSQL.
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
-# CORS lets our React site (a different address) call this API.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -16,3 +21,4 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(auth.router)
