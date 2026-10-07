@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, health
+from app.api import auth, health, projects
 from app.core.config import settings
 from app.database import models  # noqa: F401  (importing registers the tables)
 from app.database.database import Base, engine
@@ -22,3 +22,4 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(projects.router)
