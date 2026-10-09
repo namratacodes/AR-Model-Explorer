@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     debug: bool = False
     database_url: str = "sqlite:///./ar_model_explorer.db"
     cors_origins: str = "http://localhost:5173"
+    max_upload_mb: int = 20
+    storage_dir: str = "storage"
 
     # No default on purpose: the app refuses to start without a real secret.
     secret_key: str

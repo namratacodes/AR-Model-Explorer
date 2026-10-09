@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base
@@ -42,3 +42,23 @@ class Project(Base):
     )
 
     owner: Mapped["User"] = relationship(back_populates="projects")
+    datasets: Mapped[list["Dataset"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+    
+class Dataset(Base):
+    __tablename__ = "datasets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    original_filename: Mapped[str] = mapped_column(String(255))  # display only
+    storage_name: Mapped[str] = mapped_column(String(100))       # generated, safe
+    file_size_bytes: Mapped[int] = mapped_column(Integer)
+    n_rows: Mapped[int] = mapped_column(Integer)
+    n_cols: Mapped[int] = mapped_column(Integer)
+    target_column: Mapped[str | None] = mapped_column(String(255), default=None)
+    profile: Mapped[dict] = mapped_column(JSON)
+    target_info: Mapped[dict | None] = mapped_column(JSON, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    project: Mapped["Project"] = relationship(back_populates="datasets")
