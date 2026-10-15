@@ -6,7 +6,7 @@ from app.api.deps import get_current_user
 from app.database.database import get_db
 from app.database.models import Project, User
 from app.schemas.projects import ProjectCreate, ProjectList, ProjectOut, ProjectUpdate
-from app.services.storage import delete_dataset_file
+from app.services.storage import delete_dataset_file, delete_model_artifact
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -84,8 +84,11 @@ def delete_project(
     current_user: User = Depends(get_current_user),
 ):
     project = get_owned_project(project_id, db, current_user)
-    storage_names = [d.storage_name for d in project.datasets]
+    dataset_files = [d.storage_name for d in project.datasets]
+    model_files = [r.artifact_name for r in project.training_runs if r.artifact_name]
     db.delete(project)
     db.commit()
-    for name in storage_names:
+    for name in dataset_files:
         delete_dataset_file(name)
+    for name in model_files:
+        delete_model_artifact(name)

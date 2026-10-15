@@ -8,3 +8,4 @@ pwdlib[argon2]
 email-validator
 python-multipart
 pandas
+scikit-learn
