@@ -8,6 +8,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.cluster import DBSCAN, KMeans
+from sklearn.decomposition import PCA
 
 try:
     from xgboost import XGBClassifier, XGBRegressor
@@ -239,9 +241,45 @@ if XGBClassifier is not None:
             fixed_params={"verbosity": 0},
         ),
     ]
+    
+UNSUPERVISED_TASKS = ("clustering", "dimensionality_reduction")
+
+_UNSUPERVISED_SPECS = [
+    ModelSpec(
+        key="kmeans",
+        label="K-Means",
+        task="clustering",
+        estimator_class=KMeans,
+        fixed_params={"n_init": 10},
+        params={
+            "n_clusters": ParamSpec("int", 3, 2, 20, description="Number of clusters"),
+        },
+    ),
+    ModelSpec(
+        key="dbscan",
+        label="DBSCAN",
+        task="clustering",
+        estimator_class=DBSCAN,
+        accepts_random_state=False,
+        params={
+            "eps": ParamSpec("float", 1.0, 0.01, 20, description="Neighborhood radius (in scaled units)"),
+            "min_samples": ParamSpec("int", 5, 2, 100, description="Points needed to form a dense region"),
+        },
+    ),
+    ModelSpec(
+        key="pca",
+        label="PCA",
+        task="dimensionality_reduction",
+        estimator_class=PCA,
+        params={
+            "n_components": ParamSpec("int", 3, 2, 10, description="Number of components to keep"),
+        },
+    ),
+]
 
 REGISTRY: dict[str, ModelSpec] = {
-    spec.key: spec for spec in [*_SPECS, *_REGRESSION_SPECS, *_XGBOOST_SPECS]
+    spec.key: spec
+    for spec in [*_SPECS, *_REGRESSION_SPECS, *_XGBOOST_SPECS, *_UNSUPERVISED_SPECS]
 }
 
 

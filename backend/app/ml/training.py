@@ -21,7 +21,7 @@ class TrainingError(Exception):
 
 @dataclass
 class TrainingOutcome:
-    pipeline: Pipeline
+    pipeline: object
     metrics: dict
     summary: dict
 

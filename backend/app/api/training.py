@@ -32,8 +32,6 @@ def start_training(
     )
     if dataset is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Dataset not found in this project")
-    if not dataset.target_column:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Select a target column first.")
 
     try:
         spec = get_model_spec(data.model_type)
@@ -43,6 +41,10 @@ def start_training(
         params = spec.resolve_params(data.hyperparameters)  # fail fast, store full settings
     except ParamError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
+
+    # Only supervised models need a target column (clustering and PCA do not).
+    if spec.task in ("classification", "regression") and not dataset.target_column:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Select a target column first.")
 
     run = TrainingRun(
         project_id=project.id,
