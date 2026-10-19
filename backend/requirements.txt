@@ -9,3 +9,4 @@ email-validator
 python-multipart
 pandas
 scikit-learn
+xgboost

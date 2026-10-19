@@ -2,12 +2,17 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
+try:
+    from xgboost import XGBClassifier, XGBRegressor
+except ImportError:  # optional dependency: the registry just leaves XGBoost out
+    XGBClassifier = XGBRegressor = None
 
 
 class ParamError(ValueError):
@@ -171,8 +176,73 @@ _SPECS = [
         },
     ),
 ]
+_TREE_DEPTH = ParamSpec(
+    "int", None, 1, 50, nullable=True, description="Tree depth limit (empty = unlimited)"
+)
 
-REGISTRY: dict[str, ModelSpec] = {spec.key: spec for spec in _SPECS}
+_REGRESSION_SPECS = [
+    ModelSpec(
+        key="linear_regression",
+        label="Linear Regression",
+        task="regression",
+        estimator_class=LinearRegression,
+        needs_scaling=True,
+        accepts_random_state=False,
+        params={},
+    ),
+    ModelSpec(
+        key="decision_tree_regressor",
+        label="Decision Tree Regressor",
+        task="regression",
+        estimator_class=DecisionTreeRegressor,
+        params={
+            "max_depth": _TREE_DEPTH,
+            "min_samples_split": ParamSpec("int", 2, 2, 100, description="Min samples to split a node"),
+            "min_samples_leaf": ParamSpec("int", 1, 1, 100, description="Min samples in a leaf"),
+        },
+    ),
+    ModelSpec(
+        key="random_forest_regressor",
+        label="Random Forest Regressor",
+        task="regression",
+        estimator_class=RandomForestRegressor,
+        params={
+            "n_estimators": ParamSpec("int", 100, 10, 500, description="Number of trees"),
+            "max_depth": _TREE_DEPTH,
+            "min_samples_leaf": ParamSpec("int", 1, 1, 100, description="Min samples in a leaf"),
+        },
+    ),
+]
+
+_XGBOOST_SPECS = []
+if XGBClassifier is not None:
+    _xgb_params = {
+        "n_estimators": ParamSpec("int", 100, 10, 500, description="Number of boosting rounds"),
+        "max_depth": ParamSpec("int", 6, 1, 12, description="Tree depth"),
+        "learning_rate": ParamSpec("float", 0.1, 0.001, 1.0, description="Step size shrinkage"),
+    }
+    _XGBOOST_SPECS = [
+        ModelSpec(
+            key="xgboost_classifier",
+            label="XGBoost Classifier",
+            task="classification",
+            estimator_class=XGBClassifier,
+            params=_xgb_params,
+            fixed_params={"verbosity": 0},
+        ),
+        ModelSpec(
+            key="xgboost_regressor",
+            label="XGBoost Regressor",
+            task="regression",
+            estimator_class=XGBRegressor,
+            params=_xgb_params,
+            fixed_params={"verbosity": 0},
+        ),
+    ]
+
+REGISTRY: dict[str, ModelSpec] = {
+    spec.key: spec for spec in [*_SPECS, *_REGRESSION_SPECS, *_XGBOOST_SPECS]
+}
 
 
 def get_model_spec(key: str) -> ModelSpec:

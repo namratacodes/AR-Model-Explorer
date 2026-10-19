@@ -7,7 +7,7 @@ from app.database.database import SessionLocal
 from app.database.models import Dataset, Project, TrainingRun, utc_now
 from app.ml.model_registry import ParamError
 from app.ml.profiling import DatasetValidationError, load_dataframe
-from app.ml.training import TrainingError, train_classifier
+from app.ml.training import TrainingError, train_model
 from app.services.storage import dataset_path, save_model_artifact
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def execute_run(run_id: str) -> None:
         try:
             dataset = db.get(Dataset, run.dataset_id)
             df = load_dataframe(dataset_path(dataset.storage_name))
-            outcome = train_classifier(
+            outcome = train_model(
                 df, dataset.target_column, run.model_type,
                 run.hyperparameters, run.test_size, run.random_state,
             )
