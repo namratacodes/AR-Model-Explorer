@@ -48,7 +48,8 @@ class Project(Base):
     training_runs: Mapped[list["TrainingRun"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    
+
+
 class Dataset(Base):
     __tablename__ = "datasets"
 
@@ -65,7 +66,8 @@ class Dataset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     project: Mapped["Project"] = relationship(back_populates="datasets")
-    
+
+
 class TrainingRun(Base):
     __tablename__ = "training_runs"
 
@@ -89,3 +91,17 @@ class TrainingRun(Base):
     duration_s: Mapped[float | None] = mapped_column(Float, default=None)
 
     project: Mapped["Project"] = relationship(back_populates="training_runs")
+    explanations: Mapped[list["Explanation"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
+
+
+class Explanation(Base):
+    __tablename__ = "explanations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    run_id: Mapped[str] = mapped_column(ForeignKey("training_runs.id"), index=True)
+    payload: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    run: Mapped["TrainingRun"] = relationship(back_populates="explanations")

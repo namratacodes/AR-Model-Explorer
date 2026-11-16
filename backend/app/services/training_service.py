@@ -4,12 +4,12 @@ import time
 from sqlalchemy import select
 
 from app.database.database import SessionLocal
-from app.database.models import Dataset, Project, TrainingRun, utc_now
+from app.database.models import Dataset, Explanation, Project, TrainingRun, utc_now
+from app.ml.model_registry import UNSUPERVISED_TASKS, ParamError, get_model_spec
 from app.ml.profiling import DatasetValidationError, load_dataframe
 from app.ml.training import TrainingError, train_model
-from app.services.storage import dataset_path, save_model_artifact
-from app.ml.model_registry import UNSUPERVISED_TASKS, ParamError, get_model_spec
 from app.ml.unsupervised import train_unsupervised
+from app.services.storage import dataset_path, save_model_artifact
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ def execute_run(run_id: str) -> None:
         try:
             dataset = db.get(Dataset, run.dataset_id)
             df = load_dataframe(dataset_path(dataset.storage_name))
+
             if get_model_spec(run.model_type).task in UNSUPERVISED_TASKS:
                 outcome = train_unsupervised(
                     df, dataset.target_column, run.model_type,
@@ -51,11 +52,14 @@ def execute_run(run_id: str) -> None:
                     df, dataset.target_column, run.model_type,
                     run.hyperparameters, run.test_size, run.random_state,
                 )
+
             artifact_name = f"{run.id}.joblib"
             run.artifact_sha256 = save_model_artifact(artifact_name, outcome.pipeline)
             run.artifact_name = artifact_name
             run.metrics = outcome.metrics
             run.summary = outcome.summary
+            if outcome.explanations is not None:
+                db.add(Explanation(run_id=run.id, payload=outcome.explanations))
             run.status = "completed"
         except (TrainingError, ParamError, DatasetValidationError) as exc:
             run.status = "failed"

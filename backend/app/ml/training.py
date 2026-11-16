@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 import numpy as np
@@ -8,8 +9,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
 from app.ml.evaluation import evaluate_classification, evaluate_regression, to_jsonable
+from app.ml.explainability import build_explanations
 from app.ml.model_registry import get_model_spec
 from app.ml.preprocessing import build_preprocessor, select_features
+
+logger = logging.getLogger(__name__)
 
 MAX_CLASSES = 50
 MIN_USABLE_ROWS = 10
@@ -24,6 +28,7 @@ class TrainingOutcome:
     pipeline: object
     metrics: dict
     summary: dict
+    explanations: dict | None = None
 
 
 def _prepare_classification_target(y_raw: pd.Series):
@@ -126,6 +131,15 @@ def train_model(
         metrics = evaluate_regression(pipeline, X_test, y_test, random_state)
         metrics["scores"]["train_r2"] = float(pipeline.score(X_train, y_train))
 
+    # 6. Explain (an explanation problem must NEVER fail the whole training run)
+    explanations = None
+    try:
+        explanations = build_explanations(
+            pipeline, model_key, spec.task, X_train, X_test, y_test, class_names, random_state
+        )
+    except Exception:
+        logger.exception("Explanation step failed for model %s", model_key)
+
     summary = {
         "task": spec.task,
         "n_rows_used": int(len(df)),
@@ -141,5 +155,8 @@ def train_model(
         "random_state": random_state,
     }
     return TrainingOutcome(
-        pipeline=pipeline, metrics=to_jsonable(metrics), summary=to_jsonable(summary)
+        pipeline=pipeline,
+        metrics=to_jsonable(metrics),
+        summary=to_jsonable(summary),
+        explanations=explanations,
     )
