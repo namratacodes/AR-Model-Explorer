@@ -48,6 +48,9 @@ class Project(Base):
     training_runs: Mapped[list["TrainingRun"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    qr_tokens: Mapped[list["QRAccessToken"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Dataset(Base):
@@ -105,3 +108,18 @@ class Explanation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     run: Mapped["TrainingRun"] = relationship(back_populates="explanations")
+
+
+class QRAccessToken(Base):
+    __tablename__ = "qr_access_tokens"
+
+    # The id IS the random public part of the token (set by services/qr.py).
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    project: Mapped["Project"] = relationship(back_populates="qr_tokens")

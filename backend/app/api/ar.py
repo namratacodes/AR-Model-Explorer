@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
@@ -7,9 +8,20 @@ from app.api.projects import get_owned_project
 from app.database.database import get_db
 from app.database.models import Dataset, Explanation, Project, TrainingRun, User
 from app.services.ar_payload import build_ar_payload, model_label
+from app.services.qr import QRError, parse_qr_text, resolve_token
 from app.services.runs import RunNotAvailable, select_run
 
 router = APIRouter(prefix="/api/ar", tags=["ar"])
+
+
+class ResolveQRRequest(BaseModel):
+    qr_text: str = Field(min_length=1, max_length=500)
+
+
+def _payload_for(db: Session, project: Project, run: TrainingRun) -> dict:
+    dataset = db.get(Dataset, run.dataset_id)
+    explanation = db.scalar(select(Explanation).where(Explanation.run_id == run.id))
+    return build_ar_payload(project, dataset, run, explanation.payload if explanation else None)
 
 
 @router.get("/my-projects")
@@ -73,7 +85,27 @@ def get_ar_project(
         run = select_run(db, project, run_id)
     except RunNotAvailable as exc:
         raise HTTPException(exc.status_code, exc.message)
+    return _payload_for(db, project, run)
 
-    dataset = db.get(Dataset, run.dataset_id)
-    explanation = db.scalar(select(Explanation).where(Explanation.run_id == run.id))
-    return build_ar_payload(project, dataset, run, explanation.payload if explanation else None)
+
+@router.post("/resolve-qr")
+def resolve_qr(data: ResolveQRRequest, db: Session = Depends(get_db)):
+    """Public on purpose: the QR itself is the permission (read-only, one project).
+    It works for your own projects, other people's, or one shown on a screen."""
+    try:
+        project_id, token = parse_qr_text(data.qr_text)
+        project, row = resolve_token(db, project_id, token)
+    except QRError as exc:
+        raise HTTPException(exc.status_code, exc.message)
+
+    try:
+        run = select_run(db, project)
+    except RunNotAvailable as exc:
+        raise HTTPException(exc.status_code, exc.message)
+
+    payload = _payload_for(db, project, run)
+    payload["access"] = {
+        "method": "qr",
+        "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+    }
+    return payload

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
-    ar, auth, datasets, explainability, health, models, projects, training, visualizations,
+    ar, auth, datasets, explainability, health, models, projects, qr, training, visualizations,
 )
 from app.core.config import settings
 from app.database import models as db_models  # noqa: F401  (registers the tables)
@@ -30,4 +30,5 @@ app.include_router(models.router)
 app.include_router(training.router)
 app.include_router(explainability.router)
 app.include_router(visualizations.router)
+app.include_router(qr.router)
 app.include_router(ar.router)

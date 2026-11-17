@@ -11,3 +11,4 @@ pandas
 scikit-learn
 xgboost
 shap
+qrcode

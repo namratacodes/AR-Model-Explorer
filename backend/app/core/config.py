@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     debug: bool = False
     database_url: str = "sqlite:///./ar_model_explorer.db"
     cors_origins: str = "http://localhost:5173"
+
     max_upload_mb: int = 20
     storage_dir: str = "storage"
 
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
     secret_key: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+
+    # What a QR code starts with. The AR app reads this; a deployed website could use https.
+    qr_link_base: str = "armodelexplorer://open"
+    # 0 = QR codes never expire (handy for demos). Set e.g. 30 to expire after 30 days.
+    qr_token_days: int = 0
 
     model_config = SettingsConfigDict(env_file=".env")
 
