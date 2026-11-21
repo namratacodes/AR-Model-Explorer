@@ -2,9 +2,12 @@ import type {
   DashboardSummary,
   Dataset,
   DatasetPreview,
+  ModelInfo,
   Project,
   ProjectList,
   TokenResponse,
+  TrainingRun,
+  TrainRequest,
   User,
 } from "../types";
 
@@ -146,6 +149,17 @@ export const api = {
       method: "PUT",
       body: { target_column: targetColumn },
     }),
+
+  // ---- models and training
+  listModels: () => request<ModelInfo[]>("/api/models"),
+
+  startTraining: (projectId: string, data: TrainRequest) =>
+    request<TrainingRun>(`/api/projects/${projectId}/train`, { method: "POST", body: data }),
+
+  listRuns: (projectId: string, limit = 50) =>
+    request<TrainingRun[]>(`/api/projects/${projectId}/runs?limit=${limit}`),
+
+  getRun: (runId: string) => request<TrainingRun>(`/api/training/${runId}`),
 
   // ---- dashboard
   dashboardSummary: () => request<DashboardSummary>("/api/dashboard/summary"),

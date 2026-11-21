@@ -2,10 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DataPreview } from "../components/project/DataPreview";
 import { DatasetOverview } from "../components/project/DatasetOverview";
+import { RunsCard } from "../components/project/RunsCard";
 import { TargetCard } from "../components/project/TargetCard";
+import { TrainingCard } from "../components/project/TrainingCard";
 import { UploadCard } from "../components/project/UploadCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { Alert, Button, Spinner, TextField } from "../components/ui";
+import { useModels } from "../hooks/useModels";
+import { useRuns } from "../hooks/useRuns";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import type { Dataset, Project } from "../types";
@@ -26,6 +30,9 @@ export function ProjectPage() {
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const { models, error: modelsError } = useModels();
+  const { runs, loading: runsLoading, error: runsError, reload: reloadRuns } = useRuns(projectId);
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -45,6 +52,20 @@ export function ProjectPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // When a run completes the server marks the project "Trained": refresh the badge.
+  const refreshProject = useCallback(async () => {
+    try {
+      setProject(await api.getProject(projectId));
+    } catch {
+      // keep showing the old data
+    }
+  }, [projectId]);
+
+  const completedCount = runs.filter((run) => run.status === "completed").length;
+  useEffect(() => {
+    if (completedCount > 0) void refreshProject();
+  }, [completedCount, refreshProject]);
 
   // The newest dataset is shown unless the user picks another one.
   const selected = datasets.find((d) => d.id === selectedId) ?? datasets[0] ?? null;
@@ -202,6 +223,21 @@ export function ProjectPage() {
           <DatasetOverview key={`overview-${selected.id}`} dataset={selected} />
           <DataPreview key={`preview-${selected.id}`} datasetId={selected.id} />
           <TargetCard key={`target-${selected.id}`} dataset={selected} onSaved={handleTargetSaved} />
+          <TrainingCard
+            key={`train-${selected.id}-${selected.target_column ?? "none"}`}
+            projectId={project.id}
+            dataset={selected}
+            models={models}
+            modelsError={modelsError}
+            onStarted={reloadRuns}
+          />
+          <RunsCard
+            runs={runs}
+            models={models}
+            loading={runsLoading}
+            error={runsError}
+            onRetry={reloadRuns}
+          />
         </>
       )}
 

@@ -101,3 +101,63 @@ export interface DashboardSummary {
   models_used: ModelUsage[];
   recent_runs: RecentRun[];
 }
+
+// ---- models and training
+
+export interface ParamSpec {
+  type: string; // "int" | "float" | "choice"
+  default: unknown;
+  min: number | null;
+  max: number | null;
+  choices: string[] | null;
+  nullable: boolean;
+  description: string;
+}
+
+export interface ModelInfo {
+  key: string;
+  label: string;
+  task: string;
+  params: Record<string, ParamSpec>;
+}
+
+export interface TrainRequest {
+  dataset_id: string;
+  model_type: string;
+  hyperparameters: Record<string, unknown>;
+  test_size: number;
+  random_state: number;
+}
+
+export interface RunSummary {
+  task?: string;
+  n_rows_used?: number;
+  n_train?: number;
+  n_test?: number;
+  dropped_missing_target?: number;
+  dropped_duplicates?: number;
+  dropped_columns?: { column: string; reason: string }[];
+  features_used?: string[];
+  n_features_after_encoding?: number;
+  excluded_target?: string | null;
+  note?: string;
+}
+
+export interface TrainingRun {
+  id: string;
+  project_id: string;
+  dataset_id: string;
+  model_type: string;
+  task_type: string;
+  hyperparameters: Record<string, unknown>;
+  test_size: number;
+  random_state: number;
+  status: string;
+  metrics: { scores?: Record<string, number | null> } | null;
+  summary: RunSummary | null;
+  error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_s: number | null;
+}
