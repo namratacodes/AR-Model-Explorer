@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ProjectPage } from "./pages/ProjectPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ResultsPage } from "./pages/ResultsPage";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectPage />} />
+          <Route path="/projects/:projectId/runs/:runId" element={<ResultsPage />} />
         </Route>
       </Route>
 

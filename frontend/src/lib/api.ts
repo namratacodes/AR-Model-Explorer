@@ -1,3 +1,4 @@
+import type { VisualizationData } from "../resultTypes";
 import type {
   DashboardSummary,
   Dataset,
@@ -160,6 +161,12 @@ export const api = {
     request<TrainingRun[]>(`/api/projects/${projectId}/runs?limit=${limit}`),
 
   getRun: (runId: string) => request<TrainingRun>(`/api/training/${runId}`),
+
+  // ---- results
+  getVisualizations: (projectId: string, runId: string) =>
+    request<VisualizationData>(
+      `/api/projects/${projectId}/visualizations?run_id=${encodeURIComponent(runId)}`,
+    ),
 
   // ---- dashboard
   dashboardSummary: () => request<DashboardSummary>("/api/dashboard/summary"),

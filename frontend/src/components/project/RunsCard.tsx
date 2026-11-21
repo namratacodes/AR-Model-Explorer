@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { StatusBadge } from "../StatusBadge";
 import { Alert, Button, Card, Spinner } from "../ui";
 import { formatDateTime, formatNumber } from "../../lib/format";
@@ -114,7 +115,7 @@ function RunRow({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {typeof headlineValue === "number" && headline && (
             <span className="text-sm">
               <span className="text-slate-500">{headline.label} </span>
@@ -124,14 +125,22 @@ function RunRow({
           {active && <Spinner className="h-4 w-4 text-sky-600" />}
           <StatusBadge status={run.status} />
           {run.status === "completed" && (
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-expanded={open}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              {open ? "Hide details" : "Details"}
-            </button>
+            <>
+              <Link
+                to={`/projects/${run.project_id}/runs/${run.id}`}
+                className="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+              >
+                View results
+              </Link>
+              <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={open}
+                className="text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                {open ? "Hide details" : "Details"}
+              </button>
+            </>
           )}
         </div>
       </div>
