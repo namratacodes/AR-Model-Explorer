@@ -1,4 +1,12 @@
-import type { Project, ProjectList, TokenResponse, User } from "../types";
+import type {
+  DashboardSummary,
+  Dataset,
+  DatasetPreview,
+  Project,
+  ProjectList,
+  TokenResponse,
+  User,
+} from "../types";
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://127.0.0.1:8000";
 const TOKEN_KEY = "arme_token";
@@ -28,6 +36,7 @@ type RequestOptions = {
   method?: string;
   body?: unknown;
   form?: URLSearchParams;
+  formData?: FormData; // file uploads
   auth?: boolean; // false = don't send the login token (login/register)
 };
 
@@ -61,6 +70,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (options.form) {
     body = options.form;
     headers["Content-Type"] = "application/x-www-form-urlencoded";
+  } else if (options.formData) {
+    body = options.formData; // the browser sets the multipart Content-Type itself
   } else if (options.body !== undefined) {
     body = JSON.stringify(options.body);
     headers["Content-Type"] = "application/json";
@@ -87,6 +98,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 }
 
 export const api = {
+  // ---- auth
   register: (email: string, password: string) =>
     request<User>("/api/auth/register", { method: "POST", body: { email, password }, auth: false }),
 
@@ -100,12 +112,41 @@ export const api = {
 
   me: () => request<User>("/api/auth/me"),
 
+  // ---- projects
   listProjects: (limit = 20, offset = 0) =>
     request<ProjectList>(`/api/projects?limit=${limit}&offset=${offset}`),
+
+  getProject: (id: string) => request<Project>(`/api/projects/${id}`),
 
   createProject: (name: string, description: string) =>
     request<Project>("/api/projects", {
       method: "POST",
       body: { name, description: description || null },
     }),
+
+  updateProject: (id: string, data: { name?: string; description?: string | null }) =>
+    request<Project>(`/api/projects/${id}`, { method: "PATCH", body: data }),
+
+  deleteProject: (id: string) => request<void>(`/api/projects/${id}`, { method: "DELETE" }),
+
+  // ---- datasets
+  listDatasets: (projectId: string) => request<Dataset[]>(`/api/projects/${projectId}/datasets`),
+
+  uploadDataset: (projectId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<Dataset>(`/api/projects/${projectId}/dataset`, { method: "POST", formData });
+  },
+
+  getPreview: (datasetId: string, rows = 10) =>
+    request<DatasetPreview>(`/api/datasets/${datasetId}/preview?rows=${rows}`),
+
+  setTarget: (datasetId: string, targetColumn: string | null) =>
+    request<Dataset>(`/api/datasets/${datasetId}/target`, {
+      method: "PUT",
+      body: { target_column: targetColumn },
+    }),
+
+  // ---- dashboard
+  dashboardSummary: () => request<DashboardSummary>("/api/dashboard/summary"),
 };
