@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { StatusBadge } from "../StatusBadge";
 import { Alert, Button, Card, Spinner } from "../ui";
 import { formatDateTime, formatNumber } from "../../lib/format";
 import { HEADLINE, SCORE_INFO, TASK_LABELS, formatScore } from "../../lib/metrics";
 import type { ModelInfo, TrainingRun } from "../../types";
+
+const MAX_COMPARE = 6;
 
 function RunDetails({ run }: { run: TrainingRun }) {
   const scores = run.metrics?.scores ?? {};
@@ -89,30 +91,54 @@ function RunRow({
   label,
   open,
   onToggle,
+  checked,
+  selectDisabled,
+  selectHint,
+  onSelect,
 }: {
   run: TrainingRun;
   label: string;
   open: boolean;
   onToggle: () => void;
+  checked: boolean;
+  selectDisabled: boolean;
+  selectHint: string;
+  onSelect: () => void;
 }) {
   const headline = HEADLINE[run.task_type];
   const headlineValue = run.metrics?.scores?.[headline?.key ?? ""];
   const active = run.status === "queued" || run.status === "running";
+  const completed = run.status === "completed";
 
   return (
     <li className="py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{label}</p>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              {TASK_LABELS[run.task_type] ?? run.task_type}
-            </span>
+        <div className="flex min-w-0 items-start gap-3">
+          {completed ? (
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={selectDisabled}
+              onChange={onSelect}
+              title={selectHint}
+              aria-label={`Select ${label} run for comparison`}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 disabled:opacity-40"
+            />
+          ) : (
+            <span className="w-4 shrink-0" />
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium">{label}</p>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {TASK_LABELS[run.task_type] ?? run.task_type}
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-400">
+              {formatDateTime(run.created_at)}
+              {run.duration_s !== null && ` · ${run.duration_s.toFixed(1)}s`}
+            </p>
           </div>
-          <p className="mt-0.5 text-xs text-slate-400">
-            {formatDateTime(run.created_at)}
-            {run.duration_s !== null && ` · ${run.duration_s.toFixed(1)}s`}
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -124,7 +150,7 @@ function RunRow({
           )}
           {active && <Spinner className="h-4 w-4 text-sky-600" />}
           <StatusBadge status={run.status} />
-          {run.status === "completed" && (
+          {completed && (
             <>
               <Link
                 to={`/projects/${run.project_id}/runs/${run.id}`}
@@ -149,7 +175,7 @@ function RunRow({
         <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{run.error_message}</p>
       )}
 
-      {open && run.status === "completed" && <RunDetails run={run} />}
+      {open && completed && <RunDetails run={run} />}
     </li>
   );
 }
@@ -167,15 +193,47 @@ export function RunsCard({
   error: string | null;
   onRetry: () => void | Promise<void>;
 }) {
+  const navigate = useNavigate();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+
   const labels = new Map((models ?? []).map((m) => [m.key, m.label] as const));
   const active = runs.some((run) => run.status === "queued" || run.status === "running");
 
+  const completed = runs.filter((run) => run.status === "completed");
+  const selectedRuns = completed.filter((run) => selected.includes(run.id));
+  const lockedTask = selectedRuns[0]?.task_type;
+  const projectId = runs[0]?.project_id ?? "";
+
+  function toggleSelected(id: string) {
+    setSelected((previous) =>
+      previous.includes(id) ? previous.filter((x) => x !== id) : [...previous, id],
+    );
+  }
+
   return (
     <Card>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Run history</h2>
-        {active && <p className="text-xs text-sky-700">Updating automatically…</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Run history</h2>
+          {active && <p className="text-xs text-sky-700">Updating automatically…</p>}
+        </div>
+
+        {completed.length >= 2 && (
+          <div className="flex items-center gap-3">
+            <p className="hidden text-xs text-slate-500 sm:block">
+              Tick 2 to {MAX_COMPARE} runs of the same kind to compare them.
+            </p>
+            <Button
+              disabled={selectedRuns.length < 2}
+              onClick={() =>
+                navigate(`/projects/${projectId}/compare?runs=${selectedRuns.map((r) => r.id).join(",")}`)
+              }
+            >
+              Compare{selectedRuns.length > 0 ? ` (${selectedRuns.length})` : ""}
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading && runs.length === 0 && (
@@ -202,15 +260,30 @@ export function RunsCard({
 
       {runs.length > 0 && (
         <ul className="mt-2 divide-y divide-slate-100">
-          {runs.map((run) => (
-            <RunRow
-              key={run.id}
-              run={run}
-              label={labels.get(run.model_type) ?? run.model_type}
-              open={openId === run.id}
-              onToggle={() => setOpenId(openId === run.id ? null : run.id)}
-            />
-          ))}
+          {runs.map((run) => {
+            const checked = selected.includes(run.id);
+            const otherKind = lockedTask !== undefined && run.task_type !== lockedTask;
+            const tooMany = !checked && selected.length >= MAX_COMPARE;
+            return (
+              <RunRow
+                key={run.id}
+                run={run}
+                label={labels.get(run.model_type) ?? run.model_type}
+                open={openId === run.id}
+                onToggle={() => setOpenId(openId === run.id ? null : run.id)}
+                checked={checked}
+                selectDisabled={otherKind || tooMany}
+                selectHint={
+                  otherKind
+                    ? "Only runs of the same kind can be compared."
+                    : tooMany
+                      ? `You can compare up to ${MAX_COMPARE} runs.`
+                      : "Select for comparison"
+                }
+                onSelect={() => toggleSelected(run.id)}
+              />
+            );
+          })}
         </ul>
       )}
     </Card>

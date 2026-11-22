@@ -1,4 +1,5 @@
 import type { VisualizationData } from "../resultTypes";
+import type { CompareResult, QrInfo } from "../shareTypes";
 import type {
   DashboardSummary,
   Dataset,
@@ -162,11 +163,22 @@ export const api = {
 
   getRun: (runId: string) => request<TrainingRun>(`/api/training/${runId}`),
 
-  // ---- results
+  // ---- results and comparison
   getVisualizations: (projectId: string, runId: string) =>
     request<VisualizationData>(
       `/api/projects/${projectId}/visualizations?run_id=${encodeURIComponent(runId)}`,
     ),
+
+  compareRuns: (projectId: string, runIds: string[]) => {
+    const query = runIds.map((id) => `run_ids=${encodeURIComponent(id)}`).join("&");
+    return request<CompareResult>(`/api/projects/${projectId}/compare?${query}`);
+  },
+
+  // ---- QR code
+  getQr: (projectId: string) => request<QrInfo>(`/api/projects/${projectId}/qr`),
+
+  regenerateQr: (projectId: string) =>
+    request<QrInfo>(`/api/projects/${projectId}/qr/regenerate`, { method: "POST" }),
 
   // ---- dashboard
   dashboardSummary: () => request<DashboardSummary>("/api/dashboard/summary"),

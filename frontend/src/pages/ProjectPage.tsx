@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DataPreview } from "../components/project/DataPreview";
 import { DatasetOverview } from "../components/project/DatasetOverview";
+import { QrCard } from "../components/project/QrCard";
 import { RunsCard } from "../components/project/RunsCard";
 import { TargetCard } from "../components/project/TargetCard";
 import { TrainingCard } from "../components/project/TrainingCard";
@@ -195,6 +196,8 @@ export function ProjectPage() {
       </div>
 
       {actionError && <Alert>{actionError}</Alert>}
+
+      {completedCount > 0 && <QrCard projectId={project.id} projectName={project.name} />}
 
       {datasets.length === 0 && upload}
 
